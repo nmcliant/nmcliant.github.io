@@ -98,9 +98,8 @@
 
     <script>
         // --- 設定 ---
-        // GitHub Pagesで公開するため、データファイルのパスはリポジトリ名からの絶対パス、または相対パスにします
-        const MAP_DATA_URL = 'japan.topojson'; // 地図データ
-        const POP_DATA_URL = 'population.csv';   // 人口データ
+        const MAP_DATA_URL = 'japan.topojson'; // 正しいファイル名
+        const POP_DATA_URL = 'population.csv';
 
         // --- 地図の初期化 ---
         const map = L.map('map').setView([36, 138], 5);
@@ -114,43 +113,36 @@
             d3.csv(POP_DATA_URL)
         ]).then(([mapData, popData]) => {
             
-            // 人口データを扱いやすい形式に変換 {都道府県英語名: {年: 人口, ...}}
             const population = {};
             popData.forEach(d => {
-                // CSVの最初の列（prefecture_en）をキーとして使用
-                const prefKey = d3.keys(d)[0]; 
-                const prefName = d[prefKey];
+                // CSVの 'prefecture_en' をキーとして使用
+                const prefName = d.prefecture_en;
                 population[prefName] = {};
                 for (let year = 2015; year <= 2020; year++) {
                     population[prefName][year] = +d[year];
                 }
             });
 
-            // TopoJSONをGeoJSONに変換
+            // TopoJSONをGeoJSONに変換 (オブジェクト名を 'japan' に)
             const geojsonData = topojson.feature(mapData, mapData.objects.japan);
 
             let geojsonLayer;
 
-            // --- 人口に応じて色を決定する関数 ---
             function getColor(pop) {
                 return pop > 10000000 ? '#800026' :
                        pop > 5000000  ? '#BD0026' :
                        pop > 2000000  ? '#E31A1C' :
                        pop > 1000000  ? '#FC4E2A' :
                        pop > 750000   ? '#FD8D3C' :
-                       pop > 500000   ? '#FEB24C' :
-                                        '#FFEDA0';
+                       pop > 500000   ? '#FEB24C' : '#FFEDA0';
             }
 
-            // --- 地図のスタイルを更新するメイン関数 ---
             function updateMap(year) {
-                if (geojsonLayer) {
-                    map.removeLayer(geojsonLayer);
-                }
+                if (geojsonLayer) map.removeLayer(geojsonLayer);
 
                 geojsonLayer = L.geoJson(geojsonData, {
                     style: (feature) => {
-                        // TopoJSONのプロパティ名 `name_en` に合わせて人口データを取得
+                        // TopoJSONのプロパティ `name_en` を使って人口データを取得
                         const prefNameEn = feature.properties.name_en;
                         const pop = population[prefNameEn] ? population[prefNameEn][year] : 0;
                         return {
@@ -170,7 +162,7 @@
                         layer.bindPopup(`<b>${prefNameJa}</b><br>${year}年 人口: ${formatedPop}人`);
                         
                         layer.on({
-                            mouseover: (e) => e.target.setStyle({ weight: 3, color: '#666', dashArray: '' }),
+                            mouseover: (e) => e.target.setStyle({ weight: 3, color: '#666' }),
                             mouseout: (e) => geojsonLayer.resetStyle(e.target)
                         });
                     }
@@ -179,7 +171,6 @@
                 document.getElementById('year-label').textContent = `${year}年`;
             }
 
-            // --- 凡例の追加 ---
             const legend = L.control({position: 'bottomright'});
             legend.onAdd = function (map) {
                 const div = L.DomUtil.create('div', 'info legend');
@@ -199,17 +190,15 @@
             };
             legend.addTo(map);
 
-            // --- イベントリスナーの設定 ---
             document.getElementById('year-slider').addEventListener('input', (e) => {
                 updateMap(e.target.value);
             });
             
-            // --- 初期表示 ---
             updateMap('2015');
 
         }).catch(err => {
             console.error("データの読み込みに失敗しました:", err);
-            alert("データの読み込みに失敗しました。各データファイルがindex.htmlと同じ場所にアップロードされているか確認してください。");
+            alert("データの読み込みに失敗しました。ファイル名やパスが正しいか確認してください。");
         });
     </script>
 </body>
